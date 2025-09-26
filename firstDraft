@@ -38,7 +38,7 @@ split_punct <- function(punct) {
 # For loop to split up punctuation
 punctuation <- list(",","\\.",";","!",":","\\?")
  for (x in punctuation) {
-  a.cleajn <- split_punct(x)
+  a.clean <- split_punct(x)
  }
 # Above does all but Question Marks
 
