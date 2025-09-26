@@ -49,7 +49,7 @@ a.clean <- tolower(a.clean)
 ## Deleted duplicate words
 unique_words <- unique(tolower(a.clean))
 
-## Match each work in word_list3 to the unique word vector
+## Match each work in a.clean to the unique word vector
 index_list <- match(a.clean, unique_words)
 
 ## Tabulate to find how common each word is
@@ -58,5 +58,5 @@ ranked_tab <- rank(tab, ties.method ='min')
 
 ## The 4 most common 'words' in order are: "," "." "the" "and"
 common_words_index <- order(ranked_tab, decreasing=TRUE)[1:1000]
-common_words <- unique_word_list[common_words_index]
+common_words <- unique_words[common_words_index]
 common_words
