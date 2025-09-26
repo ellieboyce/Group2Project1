@@ -17,3 +17,48 @@ for (i in open_bracket) {
   }
 }
 a.clean <- a[-stage_dir]
+
+### Remove Numerals and Uppercase (Except I and A)
+remove_index <- which(words == toupper(a) & a != "I" & a != "A")
+a.clean <- a.clean[-remove_index]
+
+### Removing _ and - and —
+a.clean <- gsub("_", "", a.clean)
+a.clean <- gsub("-", " ", a.clean)
+a.clean <- gsub("—", " ", a.clean)
+
+### Splitting Puncutation
+split_punct <- function(punct) {
+  y <- gsub(punct, paste(" ",punct, sep = ""), a.clean)
+  y <- strsplit(y,split = " ")
+  a.clean <- do.call(c,y)
+}
+
+
+# For loop to split up punctuation
+punctuation <- list(",","\\.",";","!",":","\\?")
+ for (x in punctuation) {
+  a.cleajn <- split_punct(x)
+ }
+# Above does all but Question Marks
+
+### Make everything lower case
+a.clean <- tolower(a.clean)
+
+
+################## (5) Find 1000 most common words ############################
+
+## Deleted duplicate words
+unique_word_list <- unique(a.clean)
+
+## Match each work in word_list3 to the unique word vector
+index_list <- match(a.clean, unique_word_list)
+
+## Tabulate to find how common each word is
+tab <- tabulate(index_list)
+ranked_tab <- rank(tab, ties.method ='min')
+
+## The 4 most common 'words' in order are: "," "." "the" "and"
+common_words_index <- order(ranked_tab, decreasing=TRUE)[1:1000]
+common_words <- unique_word_list[common_words_index]
+common_words
