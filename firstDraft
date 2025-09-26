@@ -47,10 +47,10 @@ a.clean <- tolower(a.clean)
 ################## (5) Find 1000 most common words ############################
 
 ## Deleted duplicate words
-unique_word_list <- unique(a.clean)
+unique_words <- unique(tolower(a.clean))
 
 ## Match each work in word_list3 to the unique word vector
-index_list <- match(a.clean, unique_word_list)
+index_list <- match(a.clean, unique_words)
 
 ## Tabulate to find how common each word is
 tab <- tabulate(index_list)
