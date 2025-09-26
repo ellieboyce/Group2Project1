@@ -19,7 +19,7 @@ for (i in open_bracket) {
 a.clean <- a[-stage_dir]
 
 ### Remove Numerals and Uppercase (Except I and A)
-remove_index <- which(words == toupper(a) & a != "I" & a != "A")
+remove_index <- which(a == toupper(a) & a != "I" & a != "A")
 a.clean <- a.clean[-remove_index]
 
 ### Removing _ and - and —
