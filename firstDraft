@@ -34,13 +34,11 @@ split_punct <- function(punct) {
   a.clean <- do.call(c,y)
 }
 
-
 # For loop to split up punctuation
 punctuation <- list(",","\\.",";","!",":","\\?")
  for (x in punctuation) {
   a.clean <- split_punct(x)
  }
-# Above does all but Question Marks
 
 ### Make everything lower case
 a.clean <- tolower(a.clean)
