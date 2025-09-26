@@ -1,2 +1,19 @@
 # Group 2 Project 1
 
+# Reading the Shakespeare text file
+
+setwd("~/Group2Project1")
+a <- scan("shakespeare.txt",what="character",skip=83,nlines=196043-83,fileEncoding="UTF-8")
+
+
+# build a record of stage directions
+open_bracket <- grep("\\[", a) 
+stage_dir <- c()
+for (i in open_bracket) {
+  stage_dir_index <- grep("\\]", a[(i+1):(i+100)])
+  if (length(stage_dir_index) > 0) {
+    close_bracket <- i + stage_dir_index[1] 
+    stage_dir <- c(stage_dir, i:close_bracket)
+  }
+}
+a.clean <- a[-stage_dir]
