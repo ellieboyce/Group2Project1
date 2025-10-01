@@ -60,3 +60,83 @@ ranked_tab <- rank(tab, ties.method ='min')
 common_words_index <- order(ranked_tab, decreasing=TRUE)[1:1000]
 common_words <- unique_words[common_words_index]
 common_words
+
+## Part 5
+## Creating a vector b with the most common words
+b <- unique_words[top_indices]
+
+## Checking out what is in b
+b
+
+## Creating a vector of same length as a.clean, matching it to b
+token_vector <- match(a.clean, b)
+
+## Creating the matrix
+mlag <- 4
+n <- length(token_vector)
+M <- matrix(NA, nrow = n - mlag, ncol = mlag + 1)
+
+for (i in 0:mlag) {
+  M[, i + 1] <- token_vector[(1 + i):(n - mlag + i)]
+}
+
+M
+
+##7 Creating the key
+next.word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
+  mlag <- ncol(M) - 1
+  key <- tail(key, mlag)
+  if (length(key) < mlag) key <- c(rep(NA, mlag - length(key)), key)
+  probs <- rep(0, max(M1, na.rm = TRUE))
+  
+  for (mc in seq_len(mlag)) {
+    ## Match key to columns mc:mlag of M
+    key_sub <- key[(mlag - mc + 1):mlag]
+    M_sub <- M[, mc:mlag, drop = FALSE]
+    ## Inserting ii as described
+    ii <- colSums(!(t(M_sub) == key_sub))
+    ## Find rows where ii == 0 and is.finite(ii)
+    match_rows <- which(ii == 0 & is.finite(ii))
+    next_tokens <- M[match_rows, mlag + 1]
+    tab <- tabulate(next_tokens, nbins = max(M1, na.rm = TRUE))
+    probs[1:length(tab)] <- probs[1:length(tab)] + w[mc] * tab
+  }
+  if (sum(probs) == 0) {
+    tab <- tabulate(M1, nbins = max(M1, na.rm = TRUE))
+    probs[1:length(tab)] <- tab
+  }
+  next_token <- sample(seq_along(probs), size = 1, prob = probs)
+  return(next_token)
+}
+
+romeo_token <- match("romeo", b)  ## returns NA if "romeo" not in b
+if (!is.na(romeo_token)) {
+  start_token <- romeo_token
+}
+
+## Print the starting token and word
+cat("Starting token:", start_token, "\nWord:", b[start_token], "\n")
+
+## 9 Final model
+
+## Choose a starting token (not punctuation)
+word_tokens <- which(!b %in% punct_marks)
+start_token <- sample(word_tokens, 1)
+
+## Initialize key and output
+key <- rep(NA, mlag - 1)
+key <- c(key, start_token)
+output_tokens <- start_token
+
+repeat {
+  next_token <- next.word(key, M, M1)
+  output_tokens <- c(output_tokens, next_token)
+  key <- c(tail(key, mlag - 1), next_token)
+  if (next_token == full_stop_token) break
+}
+
+## Convert tokens back to words
+output_words <- b[output_tokens]
+
+## Print Sentence Output
+cat(paste(output_words, collapse = " "), "\n")
