@@ -1,8 +1,8 @@
 # Group 2 Project 1
 
 # Reading the Shakespeare text file
-setwd("~/Group2Project1")
-a <- scan("shakespeare.txt",what="character",skip=83,nlines=196043-83,
+setwd("C:/Users/tarun/OneDrive/Desktop/Statistical Programming") ## comment out of submitted
+a <- scan("shakespeare3.txt",what="character",skip=83,nlines=196043-83,
           fileEncoding="UTF-8")
 
 
@@ -19,11 +19,11 @@ for (i in open_bracket) {
 a.clean <- a[-stage_dir] # removing them from the original text
 
 # removing names and numbers, with exceptions I and A
-remove_index <- which(a == toupper(a) & a != "I" & a != "A") 
+remove_index <- which(a.clean == toupper(a.clean) & a.clean != "I" & a.clean != "A") 
 a.clean <- a.clean[-remove_index]
 
 # remove dashes and underscores
-a_clean <- gsub("_-", " ", a_clean)
+a.clean <- gsub("_-", " ", a.clean)
 
 # creating a function that splits the punctuation
 split_punct <- function(punct) {
@@ -37,8 +37,12 @@ for (x in punctuation) {
   a.clean <- split_punct(x)
 }
 
+# Change all words to lowercase
+a.clean <- tolower(a.clean)
+
+
 # counting how frequently each unique word occurs
-unique_words <- unique(tolower(a))
+unique_words <- unique(a.clean)
 index_vector <- match(a.clean, unique_words)
 freq <- tabulate(index_vector)
 rank_freq <- rank(freq, ties.method='min')
@@ -47,12 +51,12 @@ rank_freq <- rank(freq, ties.method='min')
 b_index <- order(rank_freq, decreasing=TRUE)[1:1000]
 b <- unique_words[b_index] # vector of common words
 
-
 #### PART 6
 
 # creating a matrix to find a sequence of adjacent words of tokens
 mlag <- 4    # set mlag to 4
-token <- match(a.clean, b)  # common word tokens
+token <- match(a.clean, b) 
+token # common word tokens
 n <- length(token)
 M <- matrix(0, nrow = n-mlag, ncol = mlag+1) # (n-mlag)x(mlag+1) matrix of 0's
 
@@ -69,7 +73,7 @@ sentence <- NULL
 match2 <- NULL
 next_word_token <- 1
 
-while (common_words[next_word_token] != ".") {
+while (b[next_word_token] != ".") {
   ii <- colSums(!(t(M[,mc:mlag,drop=FALSE])==key))
   match <- which(ii == 0)
   if (length(match) > 0) {
@@ -117,18 +121,18 @@ while (common_words[next_word_token] != ".") {
   
   
   next_word_index <- match2[sample(1:length(match2),1)]  ## pick a random matching row
-
+  
   next_word_token <- as.numeric(M[next_word_index, mlag+1])
-
+  
   ## question why this is needed etc.
   if (length(match2) == 0) {
     print("--")
     next_word_token <- sample(1:1000, 1)
-
+    
   }  
   
   #create our sentence
-  sentence[length(sentence)+1] <- common_words[next_word_token]
+  sentence[length(sentence)+1] <- b[next_word_token]
   
   #update our key
   for (m in 1:(mlag-1)) {
