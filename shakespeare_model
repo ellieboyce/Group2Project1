@@ -55,8 +55,7 @@ b <- unique_words[b_index] # vector of common words
 
 # creating a matrix to find a sequence of adjacent words of tokens
 mlag <- 4    # set mlag to 4
-token <- match(a.clean, b) 
-token # common word tokens
+token <- match(a.clean, b) # common word tokens
 n <- length(token)
 M <- matrix(0, nrow = n-mlag, ncol = mlag+1) # (n-mlag)x(mlag+1) matrix of 0's
 
