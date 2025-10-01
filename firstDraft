@@ -61,7 +61,7 @@ common_words_index <- order(ranked_tab, decreasing=TRUE)[1:1000]
 common_words <- unique_words[common_words_index]
 common_words
 
-## Part 5
+## Part 5d
 ## Creating a vector b with the most common words
 b <- unique_words[top_indices]
 
