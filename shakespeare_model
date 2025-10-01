@@ -1,1 +1,62 @@
 # Group 2 Project 1
+
+# Reading the Shakespeare text file
+setwd("~/Group2Project1")
+a <- scan("shakespeare.txt",what="character",skip=83,nlines=196043-83,
+          fileEncoding="UTF-8")
+
+
+# building a record of stage directions so that we can remove them from the text
+open_bracket <- grep("\\[", a) # locating the positions of all the open brackets
+stage_dir <- c()
+for (i in open_bracket) {
+  stage_dir_index <- grep("\\]", a[(i+1):(i+100)]) # locating the corresponding close brackets
+  if (length(stage_dir_index) > 0) {
+    close_bracket <- i + stage_dir_index[1]
+    stage_dir <- c(stage_dir, i:close_bracket) # creating a vector of the stage directions
+  }
+}
+a.clean <- a[-stage_dir] # removing them from the original text
+
+# removing names and numbers, with exceptions I and A
+remove_index <- which(a == toupper(a) & a != "I" & a != "A") 
+a.clean <- a.clean[-remove_index]
+
+# remove dashes and underscores
+a_clean <- gsub("_-", " ", a_clean)
+
+# creating a function that splits the punctuation
+split_punct <- function(punct) {
+  y <- gsub(punct, paste(" ", punct, sep = ""), a.clean)
+  y <- strsplit(y, split = " ")
+  a.clean <- do.call(c,y)
+}
+
+punctuation <- list(",","\\.",";","!",":","\\?")
+for (x in punctuation) {
+  a.clean <- split_punct(x)
+}
+
+# counting how frequently each unique word occurs
+unique_words <- unique(tolower(a))
+index_vector <- match(a.clean, unique_words)
+freq <- tabulate(index_vector)
+rank_freq <- rank(freq, ties.method='min')
+
+# The four most common 'words' in order are: "," "." "the" "and"
+b_index <- order(rank_freq, decreasing=TRUE)[1:1000]
+b <- unique_words[b_index] # vector of common words
+
+
+#### PART 6
+
+# creating a matrix to find a sequence of adjacent words of tokens
+mlag <- 4    # set mlag to 4
+token <- match(a.clean, b)  # common word tokens
+n <- length(token)
+M <- matrix(0, nrow = n-mlag, ncol = mlag+1) # (n-mlag)x(mlag+1) matrix of 0's
+
+# using a for loop to add tokens to the matrix
+for(i in 1:(mlag+1)) {
+  M[,i] <- token[i:(n-mlag+i-1)]
+}
