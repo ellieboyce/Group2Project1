@@ -1,121 +1,136 @@
-# Group 2 Project 1
+# Group 2: A Shakespeare sentence simulator
+
+# ----------------------------------
 
 # Reading the Shakespeare text file
 #setwd("~/Group2Project1")
-#a <- scan("shakespeare.txt",what="character",skip=83,nlines=196043-83,fileEncoding="UTF-8")
+a <- scan("shakespeare.txt",what="character",skip=83,nlines=196043-83,fileEncoding="UTF-8")
 
+# ----------------------------------
 
-# building a record of stage directions so that we can remove them from the text
-open_bracket <- grep("\\[", a) # locating the positions of all the open brackets
+# We began by cleaning the Shakespeare text file to create a simple vector of words
+# We needed to remove stage directions, punctuation, headings, and numbers
+
+# Building a record of stage directions by locating words that contain brackets
+open_bracket <- grep("\\[", a) # locating open bracket positions
 stage_dir <- c()
 for (i in open_bracket) {
-  stage_dir_index <- grep("\\]", a[(i+1):(i+100)]) # locating the corresponding close brackets
-  if (length(stage_dir_index) > 0) {
+  stage_dir_index <- grep("\\]", a[(i+1):(i+100)])
+  if (length(stage_dir_index) > 0) {  # loop through to find corresponding close bracket
     close_bracket <- i + stage_dir_index[1]
-    stage_dir <- c(stage_dir, i:close_bracket) # creating a vector of the stage directions
+    stage_dir <- c(stage_dir, i:close_bracket) # adding to our record
   }
 }
-a.clean <- a[-stage_dir] # removing them from the original text
+a.clean <- a[-stage_dir] # removing these stage directions from the file
 
-# removing names and numbers, with exceptions I and A
-remove_index <- which(a.clean == toupper(a.clean) & a.clean != "I" & a.clean != "A") 
+# Removing names and numbers by deleting uppercase words (Except I and A)
+remove_index <- which(a == toupper(a) & a != "I" & a != "A")
 a.clean <- a.clean[-remove_index]
 
-# remove dashes and underscores
-a.clean <- gsub("_-", " ", a.clean)
+# Removing dashes and underscores
+a.clean <- gsub("_", "", a.clean)
+a.clean <- gsub("-", " ", a.clean)
+a.clean <- gsub("—", " ", a.clean)
 
-# creating a function that splits the punctuation
+# Creating a function that splits the punctuation from their words
 split_punct <- function(punct) {
-  y <- gsub(punct, paste(" ", punct, sep = ""), a.clean)
-  y <- strsplit(y, split = " ")
+  y <- gsub(punct, paste(" ",punct, sep = ""), a.clean)
+  y <- strsplit(y,split = " ")
   a.clean <- do.call(c,y)
 }
 
-punctuation <- list(",","\\.",";","!",":","\\?")
+# Looping through the text to split up punctuation using our function
+punctuation <- c(",", "\\.", ";", "!", ":", "\\?")
 for (x in punctuation) {
   a.clean <- split_punct(x)
 }
 
-# Change all words to lowercase
-a.clean <- tolower(a.clean)
+a.clean <- tolower(a.clean) # making everything lower case
 
+# Now that we have a clean set of strings to work with, we want to find the most common words in the text
 
-# counting how frequently each unique word occurs
-unique_words <- unique(a.clean)
-index_vector <- match(a.clean, unique_words)
-freq <- tabulate(index_vector)
-rank_freq <- rank(freq, ties.method='min')
+unique_words <- unique(tolower(a)) # deleting duplicate words
+index_vector <- match(a.clean, unique_words) # matching each word to the unique words vector
+freq <- tabulate(index_vector) # counting how frequently each word occurs
+rank_freq <- rank(freq, ties.method='min') # rank of most common words
 
-# The four most common 'words' in order are: "," "." "the" "and"
-b_index <- order(rank_freq, decreasing=TRUE)[1:1000]
+b_index <- order(rank_freq, decreasing=TRUE)[1:1000] # ordering from most common
 b <- unique_words[b_index] # vector of common words
 
-#### PART 6
+# Using this vector of common words, we constructed a matrix of common word token sequences
 
-# creating a matrix to find a sequence of adjacent words of tokens
-mlag <- 4    # set mlag to 4
-token <- match(a.clean, b) # common word tokens
+mlag <- 4 # maximum lag considered
+token <- match(a.clean, b) # tokens of common words
 n <- length(token)
-M <- matrix(0, nrow = n-mlag, ncol = mlag+1) # (n-mlag)x(mlag+1) matrix of 0's
+M <- matrix(NA, nrow = n - mlag, ncol = mlag + 1) # starting with an empty (n-mlag)x(mlag+1) matrix
+M1 <- token
 
-# using a for loop to add tokens to the matrix
+# Adding token vectors to the matrix
 for(i in 1:(mlag+1)) {
   M[,i] <- token[i:(n-mlag+i-1)]
 }
 
-#### Part (7) ####
+# ---------------------------------------------------------------------
 
+# Creating a function which generates the next word of a given sequence
 
-next_word <- function(key,M,w=rep(1,ncol(M)-1)) {
-  sentence <- c()
-  match2 <- c()
-  next_word_token <- 1
-  mc <- 1
+next.word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
+  mlag <- ncol(M) - 1
+  probs <- c()
   
-  sentence[length(sentence)+1] <- b[key[mlag]]
-  cat(sentence, "is the randomly chosen starting word \n")
+#  if (length(key) < mlag)
+#    key <- c(rep(NA, mlag - length(key)), key)
   
-  while (b[next_word_token] != ".") {
-    for (mc in 1:mlag) {
-      if (length(match2) > 0) {
-        break
-      }
-      ii <- colSums(!(t(M[,mc:mlag,drop=FALSE])==key[mc:mlag]))
-      match <- which(ii == 0)
-      if (length(match) > 0) {
-        for (s in 1:length(match)) {
-          if (is.na(M[match[s],mlag+1]) == FALSE) {
-            match2[length(match2)+1] <- match[s]
-          }
-        }
-      }
-    }
-    next_word_index <- match2[sample(1:length(match2),1)]  ## pick a random matching row
-    
-    next_word_token <- as.numeric(M[next_word_index, mlag+1])
-    
-    #create our sentence
-    sentence[length(sentence)+1] <- b[next_word_token]
-    
-    #update our key
-    for (m in 1:(mlag-1)) {
-      key[m] <- key[m+1]
-    }
-    key[mlag] <- next_word_token
-    
-    #reset object
-    match2 <- NULL
-    
-    
+  # using the end of key if it's too long
+  if (length(key) > mlag) {
+    key <- tail(key, mlag)
   }
-  paste(sentence, collapse = " ")
+  
+  for (i in 1:mlag) {
+    mc <- mlag - i + 1
+    key <- key[mc:mlag] # match key to columns of mc:mlag of M
+    ii <- colSums(!(t(M[, mc:mlag, drop=FALSE]) == key))
+    match <- which(ii == 0 & is.finite(ii)) # if ii[j]=0 & is finite, then row j of M contains a match
+    
+    next_tokens <- M[match, mlag+1] # adds matching tokens to the matrix
+    weight <- w[i] / length(next_tokens)
+    probs <- c(probs, rep(weight, length(next_tokens)))
+  #  freq <- tabulate(next_tokens, nbins = max(M1, na.rm = TRUE))
+  #  probs[1:length(tab)] <- probs[1:length(freq)] + w[i] * freq
+  }
+  
+  # if no matches, sample from common words vector
+  if (length(match) == 0) {
+    freq <- tabulate(M1, nbins = length(b))
+    return(sample(1:length(b), 1, prob = freq))
+  }
+  
+  return(sample(seq_along(probs), 1, prob = probs))
 }
 
-#create a random starting key that isn't punctuation
-punct_mark = c(",",".","?","!",";",":")
-d <- which(!(b %in% punct_mark))
-key <- c(rep(NA, mlag-1),(sample(d,1)))
+# ---------------------------------------------------------------------
 
-#run the next word function
-next_word(key,M)
+# Simulating our sentences
+
+start_token <- sample(which(!is.na(token)),1) # choosing random starting token
+key <- token[start_token] # using the position of our start token as our key
+sentence <- key # initialising our sentence with the key
+repeat {
+  next_token <- next.word(key, M, M1) # looping through using our function
+  sentence <- c(sentence, next_token) # adding these words to our sentence
+  if (b[next_token] == ".") break # stopping our function when we reach a full stop
+}
+
+b[sentence[1]] <- gsub("(^[[:alpha:]])", "\\U\\1", b[sentence[1]], perl=TRUE) # capitalising the first word of the sentence
+gsub(" (\\.)", "\\1", paste(b[sentence], collapse = " ")) # removing space between last word and full stop and printing our sentence
+
+
+### Group contributions:
+
+# Tarun
+
+# Jo
+
+# Ellie
+
 
