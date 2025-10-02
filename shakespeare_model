@@ -1,9 +1,8 @@
 # Group 2 Project 1
 
 # Reading the Shakespeare text file
-setwd("C:/Users/tarun/OneDrive/Desktop/Statistical Programming") ## comment out of submitted
-a <- scan("shakespeare3.txt",what="character",skip=83,nlines=196043-83,
-          fileEncoding="UTF-8")
+#setwd("~/Group2Project1")
+#a <- scan("shakespeare.txt",what="character",skip=83,nlines=196043-83,fileEncoding="UTF-8")
 
 
 # building a record of stage directions so that we can remove them from the text
@@ -66,87 +65,57 @@ for(i in 1:(mlag+1)) {
 
 #### Part (7) ####
 
-mc <- 1
-key <- c(126)
-sentence <- NULL
-match2 <- NULL
-next_word_token <- 1
 
-while (b[next_word_token] != ".") {
-  ii <- colSums(!(t(M[,mc:mlag,drop=FALSE])==key))
-  match <- which(ii == 0)
-  if (length(match) > 0) {
-    for (s in 1:length(match)) {
-      if (is.na(M[match[s],mlag+1]) == FALSE) {
-        match2[length(match2)+1] <- match[s]
+next_word <- function(key,M,w=rep(1,ncol(M)-1)) {
+  sentence <- c()
+  match2 <- c()
+  next_word_token <- 1
+  mc <- 1
+  
+  sentence[length(sentence)+1] <- b[key[mlag]]
+  cat(sentence, "is the randomly chosen starting word \n")
+  
+  while (b[next_word_token] != ".") {
+    for (mc in 1:mlag) {
+      if (length(match2) > 0) {
+        break
       }
-    }
-  }
-  if (length(match2) == 0) {
-    ii <- colSums(!(t(M[,(mc+1):mlag,drop=FALSE])==key[(mc+1):mlag]))
-    match <- which(ii == 0)
-    if (length(match) > 0) {
-      for (s in 1:length(match)) {
-        if (is.na(M[match[s],mlag+1]) == FALSE) {
-          match2[length(match2)+1] <- match[s]
+      ii <- colSums(!(t(M[,mc:mlag,drop=FALSE])==key[mc:mlag]))
+      match <- which(ii == 0)
+      if (length(match) > 0) {
+        for (s in 1:length(match)) {
+          if (is.na(M[match[s],mlag+1]) == FALSE) {
+            match2[length(match2)+1] <- match[s]
+          }
         }
       }
     }
-  }
-  
-  if (length(match2) == 0) {
-    ii <- colSums(!(t(M[,(mc+2):mlag,drop=FALSE])==key[(mc+2):mlag]))
-    match <- which(ii == 0)
-    if (length(match) > 0) {
-      for (s in 1:length(match)) {
-        if (is.na(M[match[s],mlag+1]) == FALSE) {
-          match2[length(match2)+1] <- match[s]
-        }
-      }
-    }
-  }
-  
-  if (length(match2) == 0) {
-    ii <- colSums(!(t(M[,(mc+3):mlag,drop=FALSE])==key[(mc+3):mlag]))
-    match <- which(ii == 0)
-    if (length(match) > 0) {
-      for (s in 1:length(match)) {
-        if (is.na(M[match[s],mlag+1]) == FALSE) {
-          match2[length(match2)+1] <- match[s]
-        }
-      }
-    }
-  }
-  
-  
-  next_word_index <- match2[sample(1:length(match2),1)]  ## pick a random matching row
-  
-  next_word_token <- as.numeric(M[next_word_index, mlag+1])
-  
-  ## question why this is needed etc.
-  if (length(match2) == 0) {
-    print("--")
-    next_word_token <- sample(1:1000, 1)
+    next_word_index <- match2[sample(1:length(match2),1)]  ## pick a random matching row
     
-  }  
-  
-  #create our sentence
-  sentence[length(sentence)+1] <- b[next_word_token]
-  
-  #update our key
-  for (m in 1:(mlag-1)) {
-    key[m] <- key[m+1]
+    next_word_token <- as.numeric(M[next_word_index, mlag+1])
+    
+    #create our sentence
+    sentence[length(sentence)+1] <- b[next_word_token]
+    
+    #update our key
+    for (m in 1:(mlag-1)) {
+      key[m] <- key[m+1]
+    }
+    key[mlag] <- next_word_token
+    
+    #reset object
+    match2 <- NULL
+    
+    
   }
-  key[mlag] <- next_word_token
-  
-  #reset object
-  match2 <- NULL
+  paste(sentence, collapse = " ")
 }
 
-# Our random word starter is encoded into our function
-# as of present. Doesn't necessarily discount puncuation
+#create a random starting key that isn't punctuation
+punct_mark = c(",",".","?","!",";",":")
+d <- which(!(b %in% punct_mark))
+key <- c(rep(NA, mlag-1),(sample(d,1)))
 
+#run the next word function
+next_word(key,M)
 
-##### (9) Paste our sentence ######
-
-paste(sentence, collapse = " ")
