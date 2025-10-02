@@ -72,7 +72,7 @@ for(i in 1:(mlag+1)) {
 
 # ---------------------------------------------------------------------
 
-# Creating a function which generates the next word of a given sequence
+# Creating a function which predicts the next word of a given sequence
 
 next_word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
   #initialization
@@ -81,15 +81,17 @@ next_word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
   next_word_token <- 1
   mc <- 1
   
-  sentence[length(sentence)+1] <- b[key[mlag]] 
+  sentence[length(sentence)+1] <- b[key[mlag]] #Setting the components of our sentence for the model
 
   while (b[next_word_token] != ".") {
     for (mc in 1:mlag) {
       if (length(match2) > 0) {
-        break
+        break # the three lines above tell the model to stop the sentence after it encounters a full stop
       }
-      ii <- colSums(!(t(M[,mc:mlag,drop=FALSE])==key[mc:mlag]))
-      match <- which(ii == 0 & is.finite(ii))
+      ii <- colSums(!(t(M[,mc:mlag,drop=FALSE])==key[mc:mlag])) # Setting the model to match the line in the matrix that fits the key 
+      # as well as setting the length of sequence of words the model should use for prediction
+      match <- which(ii == 0 & is.finite(ii)) # this and next 4 lines are setting the model to 
+      # only select as a match the words in matrix rather than empty cell 'NA' and the conditions for this
       if (length(match) > 0) {
         for (s in 1:length(match)) {
           if (is.na(M[match[s],mlag+1]) == FALSE) {
@@ -99,13 +101,13 @@ next_word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
       }
     }
     
-    next_word_index <- match2[sample(1:length(match2),1)]  ## pick a random matching row
+    next_word_index <- match2[sample(1:length(match2),1)]  # pick a random matching row
     next_word_token <- as.numeric(M[next_word_index, mlag+1])
     
     #create our sentence
     sentence[length(sentence)+1] <- b[next_word_token]
     
-    #update our key
+    #update our key to come from matrix of common words 'm'
     for (m in 1:(mlag-1)) {
       key[m] <- key[m+1]
     }
