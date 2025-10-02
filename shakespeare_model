@@ -47,17 +47,17 @@ for (x in punctuation) {
 
 a.clean <- tolower(a.clean) # making everything lower case
 
-# Now that we have a clean set of strings to work with, we want to find the most common words in the text
+# Now that we have a clean set of strings to work with, we want to find the most common words in the text and then store this in a vector called 'b'.
 
-unique_words <- unique(tolower(a)) # deleting duplicate words
+unique_words <- unique(a.clean) # deleting duplicate words
 index_vector <- match(a.clean, unique_words) # matching each word to the unique words vector
 freq <- tabulate(index_vector) # counting how frequently each word occurs
 rank_freq <- rank(freq, ties.method='min') # rank of most common words
 
-b_index <- order(rank_freq, decreasing=TRUE)[1:1000] # ordering from most common
-b <- unique_words[b_index] # vector of common words
+b_index <- order(rank_freq, decreasing=TRUE)[1:1000] # ordering words from the most common
+b <- unique_words[b_index] # vector b of common words
 
-# Using this vector of common words, we constructed a matrix of common word token sequences
+# Using this vector of common words, we constructed a matrix (M) of common word token sequences
 
 mlag <- 4 # maximum lag considered
 token <- match(a.clean, b) # tokens of common words
@@ -95,8 +95,6 @@ next.word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
     next_tokens <- M[match, mlag+1] # adds matching tokens to the matrix
     weight <- w[i] / length(next_tokens)
     probs <- c(probs, rep(weight, length(next_tokens)))
-  #  freq <- tabulate(next_tokens, nbins = max(M1, na.rm = TRUE))
-  #  probs[1:length(tab)] <- probs[1:length(freq)] + w[i] * freq
   }
   
   # if no matches, sample from common words vector
@@ -112,12 +110,12 @@ next.word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
 
 # Simulating our sentences
 
-start_token <- sample(which(!is.na(token)),1) # choosing random starting token
+start_token <- sample(which(!is.na(token)),1) # choosing random word from word list as start token
 key <- token[start_token] # using the position of our start token as our key
 sentence <- key # initialising our sentence with the key
 repeat {
   next_token <- next.word(key, M, M1) # looping through using our function
-  sentence <- c(sentence, next_token) # adding these words to our sentence
+  sentence <- c(sentence, next_token) # adding these words from next_token to our sentence
   if (b[next_token] == ".") break # stopping our function when we reach a full stop
 }
 
