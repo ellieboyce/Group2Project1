@@ -75,20 +75,20 @@ for(i in 1:(mlag+1)) {
 # Creating a function which predicts the next word of a given sequence
 
 next_word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
-  #initialization
+  # Initialising the variables we'll be using in our function
   sentence <- c()
   match2 <- c()
   next_word_token <- 1
   mc <- 1
   
-  sentence[length(sentence)+1] <- b[key[mlag]] #Setting the components of our sentence for the model
+  sentence[length(sentence)+1] <- b[key[mlag]] # setting the components of our sentence for the model
 
   while (b[next_word_token] != ".") {
     for (mc in 1:mlag) {
       if (length(match2) > 0) {
-        break # the three lines above tell the model to stop the sentence after it encounters a full stop
+        break # telling the model to stop the sentence after it encounters a full stop
       }
-      ii <- colSums(!(t(M[,mc:mlag,drop=FALSE])==key[mc:mlag])) # Setting the model to match the line in the matrix that fits the key 
+      ii <- colSums(!(t(M[,mc:mlag,drop=FALSE])==key[mc:mlag])) # setting the model to match the line in the matrix that fits the key 
       # as well as setting the length of sequence of words the model should use for prediction
       match <- which(ii == 0 & is.finite(ii)) # this and next 4 lines are setting the model to 
       # only select as a match the words in matrix rather than empty cell 'NA' and the conditions for this
