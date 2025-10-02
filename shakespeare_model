@@ -93,8 +93,7 @@ next.word <- function(key, M, M1, w = rep(1, ncol(M) - 1)) {
     match <- which(ii == 0 & is.finite(ii)) # if ii[j]=0 & is finite, then row j of M contains a match
     
     next_tokens <- M[match, mlag+1] # adds matching tokens to the matrix
-    weight <- w[i] / length(next_tokens)
-    probs <- c(probs, rep(weight, length(next_tokens)))
+    probs <- c(probs, rep(w, length(next_tokens)))
   }
   
   # if no matches, sample from common words vector
