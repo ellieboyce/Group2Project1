@@ -1,1 +1,9 @@
 # Group 2: Project 2
+
+
+n <- 1000    # number of people
+hmax <- 5    # maximum people per household
+havg <- n/(mean(1:hmax)) # average people per household
+
+# a vector which indicates which household people belong to
+h <- sample(rep(1:havg, sample(1:hmax, havg, replace = TRUE))) 
