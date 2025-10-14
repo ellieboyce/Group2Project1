@@ -1,0 +1,108 @@
+#### Assignment 2 ####
+
+## For checking how long code takes to run
+start.time <- Sys.time()
+
+#### (1) produce h vector ####
+
+n <- 10000    # number of people
+hmax <- 5    # maximum people per household
+
+## Bad Code
+
+h <- rep(0,n+(2*hmax))
+x=0
+while (h[n+hmax] == 0) {
+  x = x+1
+  ii <- which(h == 0)
+  house_size <- sample(1:hmax,1)
+  h[ii[1]:ii[house_size]] <- x
+}
+
+h <- sample(h[1:n])
+
+
+# h
+# tabulate(h) # How many people are in each house
+# tabulate(tabulate(h)) # How many of each size house there is
+
+
+
+#### (2) Function get.net ####
+
+## Create our beta
+bmu = 5e-5
+bsc = 1e-5
+beta <- runif(n)
+bmean <- mean(beta)
+
+## get.net function
+
+get.net <- function(beta,h,nc=15){
+  alink <- vector(mode = "list", length = n)  ## Initilaize an empty vector
+  for(i in 1:n) {
+    prob <- (nc*beta[i]*beta)/((bmean^2)*(n-1))  ## Find all probabilities for person i using formula
+    u <- runif(n) ## random uniform deviates
+
+    b <- which((u<prob)&(h!=h[i]))
+    b <- b[b>i]
+    alink[[i]] <- c(alink[[i]],b) ## Assign person i's regular contacts
+    
+    
+    for(x in alink[[i]]) {  ## Recording all contacts twice
+      if (x>i){
+      alink[[x]] <- c(alink[[x]],i)
+      }
+    }
+  }
+
+  return(alink)
+}
+
+alink <- get.net(beta,h)
+
+## This function I think works well, albiet slightly messy
+
+
+#### (3) This damn Nseir function ####
+
+nseir <- function(beta,h,alink,alpha=c(.1,.01,.01),delta=.2,gamma=.4,nc=15, nt = 100,pinf = .005) {
+  x <- rep(0,n) ## initialize to susceptible state
+  ni <- n*pinf
+  x[sample(1:n, round(ni))] <- 2 ## create some infectives
+  S <- E <- I <- R <- rep(0,nt) ## set up storage for pop in each state
+  S[1] <- n-ni;I[1] <- ni ## initialize
+  for (i in 2:nt) { ## loop over days
+    
+    infect <- x[x==2]
+    u <- runif(n) ## uniform random deviates
+
+    x[x==2&u<delta] <- 3 ## I -> R with prob delta
+    x[x==1&u<gamma] <- 2 ## E -> I with prob gamma
+    
+    for (j in infect) { ## S -> E
+      x[(h==h[j])&(u<alpha[1])&x==0] <- 1 ## household contacts
+      u <- runif(n)
+      m <- rep(0,n)
+      m[alink[[j]]] <- 1
+      x[m&(u<alpha[2])&x==0] <- 1 # # regular mixing
+      u <- runif(n)
+      prob <- (alpha[3]*nc*beta[j]*beta)/((bmean^2)*(n-1)) 
+      x[x==0&u<prob] <- 1 ## Random contacts
+    }
+    
+    S[i] <- sum(x==0); E[i] <- sum(x==1)
+    I[i] <- sum(x==2); R[i] <- sum(x==3)
+  }
+  list(S=S,E=E,I=I,R=R)
+} ## nseir
+
+nseir(beta,h,alink, nt = 100)
+
+## Check how long code takes to run
+end.time <- Sys.time()
+time_taken <- end.time - start.time
+time_taken
+
+
+#### End ####
