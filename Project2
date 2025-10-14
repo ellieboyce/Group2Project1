@@ -8,7 +8,6 @@
 
 library(ggplot2)
 library(tidyr)
-# dev.off()
 
 #-------------------------------------------------------------------------------
 
@@ -54,3 +53,86 @@ get.net <- function(beta, h, nc = 15) {
 # (nc*beta_i*beta_j)/(beta^2*(n-1))
 # links are undirected => if i-j exists, so does j-i
 # alink[[i]] gives all indices of i's contacts
+
+#-------------------------------------------------------------------------------
+
+## STEP 3:
+
+# each day E -> I with probability gamma
+# I -> R with probability delta
+# S -> E based on household infections (a_h), contact network infections (a_c) and random mixing (a_r)
+# delivers a function that returns counts of S,E,I,R over time
+
+nseir <- function(beta, h, alink,
+                  alpha = c(.1, .01, .01), 
+                  delta = .2, # daily probability of I moving to R
+                  gamma = .4, # daily probability of E moving to I
+                  nc = 15, # average number of contacts per person
+                  nt = 100, # number of days
+                  pinf = .005) {
+  
+  bmu <- mean(beta) # mean sociability parameter
+
+  # States: 0 = S, 1 = E, 2 = I, 3 = R
+  # starting everyone in state S, except pinf*n people in I
+  x <- rep(0, n)
+  x[sample(1:n, round(pinf * n))] <- 2 # pinf*n people in starting in state I
+  
+  S <- E <- I <- R <- rep(0, nt) # storage for population in each state
+  
+  # initialising the number of people in each state on day 1
+  S[1] <- sum(x == 0)
+  E[1] <- sum(x == 1)
+  I[1] <- sum(x == 2)
+  R[1] <- sum(x == 3)
+  
+  alpha_h <- alpha[1] # daily probability of person in state I infecting household member in state S
+  alpha_c <- alpha[2] # daily probability of person in state I infecting a person in their contact network
+  alpha_r <- alpha[3] # daily probability of person in state I infecting by random mixing
+  
+  # looping over the days
+  for (t in 2:nt) {
+    u <- runif(n)
+    
+    x[x == 1 & u < gamma] <- 2 # each day E -> I with probability gamma
+    x[x == 2 & u < delta] <- 3 # each day I -> R with probability delta
+    
+    # infection risk
+    risk <- rep(0, n) # empty vector
+    inf <- which(x == 2) # people in state I
+    
+    if (length(inf) > 0) {
+      
+
+      ####### need to fix these loops!
+
+      # household transmission
+      for (i in inf) {
+        household <- which((h == h[i]) & (x == 0))
+        if (length(household) > 0) {
+          risk[household] <- 1 - (1 - risk[household]) * (1 - alpha_h)
+        }
+      }
+      
+      # regular contacts
+      for (i in inf) {
+        contacts <- alink[[i]]
+        if (length(contacts) == 0) next
+        contacts <- contacts[x[contacts] == 0]
+        if (length(contacts) > 0) {
+          risk[contacts] <- 1 - (1 - risk[contacts]) * (1 - alpha_c)
+        }
+      }
+    }
+    
+    x[x == 0 & (runif(n) < risk)] <- 1 # S -> E
+    
+    # recording the totals in each state
+    S[t] <- sum(x == 0)
+    E[t] <- sum(x == 1)
+    I[t] <- sum(x == 2)
+    R[t] <- sum(x == 3)
+  }
+  
+  list(S=S, E=E, I=I, R=R, t = 1:nt)
+}
