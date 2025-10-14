@@ -1,9 +1,56 @@
-# Group 2: Project 2
+### Group 2 Project 2
+
+# Simulating how diseases spread when people live in households and have social networks
+
+# Building data structures (networks and households)
+# Simulating infection spread over time
+# Plotting and comparing scenarios
+
+library(ggplot2)
+library(tidyr)
+# dev.off()
+
+#-------------------------------------------------------------------------------
+
+## STEP 1: assigning people to households
+n <- 100
+hmax <- 5
+h <- sample(rep(1:n, sample(1:(n/hmax), n, replace = TRUE)))[1:n]
 
 
-n <- 1000    # number of people
-hmax <- 5    # maximum people per household
-havg <- n/(mean(1:hmax)) # average people per household
+#--------------------------------------------------------------------------------
 
-# a vector which indicates which household people belong to
-h <- sample(rep(1:havg, sample(1:hmax, havg, replace = TRUE))) 
+## STEP 2: Building the contact network model
+
+#  beta = vector of sociability
+#  h = household membership vector
+#  nc = average number of contacts per person
+
+get.net <- function(beta, h, nc = 15) {
+  n <- 100
+  bmu <- mean(beta) # mean sociabilty parameter
+  alink <- vector("list", n) # creating an empty vector to start
+  
+  for (i in 1:(n-1)) {
+    for (j in (i+1):n) {
+      
+      if (is.na(h[i]) || is.na(h[j])) next
+      if (h[i] == h[j]) next
+      
+      p_ij <- (nc * beta[i] * beta[j]) / (bmu^2 * (n - 1))
+      
+      if (runif(1) < p_ij) {
+        alink[[i]] <- c(alink[[i]], j)
+        alink[[j]] <- c(alink[[j]], i)
+      }
+    }
+  }
+  return(alink)
+}
+
+# each person has a sociability value beta_i (higher => more connections)
+# people in the same household cannot be linked in the network
+# probability of a link
+# (nc*beta_i*beta_j)/(beta^2*(n-1))
+# links are undirected => if i-j exists, so does j-i
+# alink[[i]] gives all indices of i's contacts
