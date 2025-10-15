@@ -1,0 +1,139 @@
+##Question 1
+n <- 1000      # setting the number of people
+hmax <- 5      # setting maximum household size as 5
+
+set.seed(1)    # for reproducibility
+sizes <- sample(1:hmax, ceiling(n / ((1 + hmax) / 2)), replace = TRUE)
+h <- rep(seq_along(sizes), times = sizes)[1:n]
+
+##Question 2
+beta <- runif(n, 0.5, 1.5)
+get.net <- function(beta, h, nc = 15) {
+  n <- length(beta)
+  beta_bar <- mean(beta)
+  net <- vector("list", n)
+  
+  for (i in 1:(n-1)) {
+    for (j in (i+1):n) {
+      # Only consider non-household contacts
+      if (!is.na(h[i]) && !is.na(h[j]) && h[i] != h[j]) {
+        p_link <- nc * beta[i] * beta[j] / (beta_bar^2 * (n-1))
+        if (runif(1) < p_link) {
+          net[[i]] <- c(net[[i]], j)
+          net[[j]] <- c(net[[j]], i)
+        }
+      }
+    }
+  }
+  return(net)
+}
+net <- get.net(beta, h, nc = 15)
+
+## Question 3
+nseir <- function(beta, h, alink, alpha = c(.1, .01, .01), delta = .2, gamma = .4, nc = 15, nt = 100, pinf = .005) {
+  n <- length(beta)
+  beta_bar <- mean(beta)
+  # States: 1=S, 2=E, 3=I, 4=R
+  state <- rep(1, n)
+  state[sample(1:n, round(n * pinf))] <- 3  # initial infected
+  
+  # Storage for results
+  S <- E <- I <- R <- numeric(nt)
+  
+  for (t in 1:nt) {
+    # Track new transitions
+    newE <- rep(FALSE, n)
+    newI <- rep(FALSE, n)
+    newR <- rep(FALSE, n)
+    
+    # Find indices for each state
+    indS <- which(state == 1)
+    indE <- which(state == 2)
+    indI <- which(state == 3)
+    
+    # Household infection
+    for (i in indI) {
+      hh <- which(h == h[i] & state == 1)
+      if (length(hh) > 0) {
+        newE[hh] <- newE[hh] | (runif(length(hh)) < alpha[1])
+      }
+      # Network infection
+      net <- alink[[i]]
+      netS <- net[state[net] == 1]
+      if (length(netS) > 0) {
+        newE[netS] <- newE[netS] | (runif(length(netS)) < alpha[2])
+      }
+      # Random mixing
+      randS <- indS
+      if (length(randS) > 0) {
+        p_rand <- alpha[3] * nc * beta[i] * beta[randS] / (beta_bar^2 * (n - 1))
+        newE[randS] <- newE[randS] | (runif(length(randS)) < p_rand)
+      }
+      # I -> R
+      if (runif(1) < delta) newR[i] <- TRUE
+    }
+    
+    # E -> I
+    if (length(indE) > 0) {
+      newI[indE] <- runif(length(indE)) < gamma
+    }
+    
+    # Update states
+    state[newE] <- 2
+    state[newI] <- 3
+    state[newR] <- 4
+    
+    # Record results
+    S[t] <- sum(state == 1)
+    E[t] <- sum(state == 2)
+    I[t] <- sum(state == 3)
+    R[t] <- sum(state == 4)
+  }
+  
+  return(list(S = S, E = E, I = I, R = R, t = 1:nt))
+}
+
+res <- nseir(beta, h, net, nt = 100)
+matplot(res$t, cbind(res$S, res$E, res$I, res$R), type = "l", lty = 1, col = 1:4, xlab = "Day", ylab = "Count")
+legend("topright", legend = c("S", "E", "I", "R"), col = 1:4, lty = 1)
+
+## Question 4
+plot_nseir <- function(res) {
+  matplot(res$t, cbind(res$S, res$E, res$I, res$R), type = "l", lty = 1, col = c("blue", "orange", "red", "green"),
+          xlab = "Day", ylab = "Number of people", main = "SEIR Epidemic Dynamics")
+  legend("topright", legend = c("Susceptible", "Exposed", "Infectious", "Recovered"),
+         col = c("blue", "orange", "red", "green"), lty = 1, cex = 0.8)
+}
+
+res <- nseir(beta, h, net)
+plot_nseir(res)
+
+## Question 5
+# Scenario 1: Full model, default parameters
+set.seed(1)
+beta1 <- runif(n, 0, 1)
+net1 <- get.net(beta1, h, nc = 15)
+res1 <- nseir(beta1, h, net1, alpha = c(.1, .01, .01), nt = 100)
+
+# Scenario 2: No household/network, only random mixing
+res2 <- nseir(beta1, h, net1, alpha = c(0, 0, 0.04), nt = 100)
+
+# Scenario 3: Full model, constant beta
+beta2 <- rep(mean(beta1), n)
+net2 <- get.net(beta2, h, nc = 15)
+res3 <- nseir(beta2, h, net2, alpha = c(.1, .01, .01), nt = 100)
+
+# Scenario 4: Constant beta, only random mixing
+res4 <- nseir(beta2, h, net2, alpha = c(0, 0, 0.04), nt = 100)
+
+# Plot all scenarios side by side
+par(mfrow = c(2, 2))
+plot_nseir(res1)
+title("Full Model, Variable Beta")
+plot_nseir(res2)
+title("Random Mixing Only, Variable Beta")
+plot_nseir(res3)
+title("Full Model, Constant Beta")
+plot_nseir(res4)
+title("Random Mixing Only, Constant Beta")
+par(mfrow = c(1, 1))
