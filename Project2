@@ -14,9 +14,9 @@
 #  A set of plots comparing different scenarios
 
 ## Contributions:
-#  Ellie: created h vector, get.net function, n_seir function,
+#  Ellie: created h vector, get.net function, nseir function,
 #        provided comments, organised github file
-#  Tarun: created plot function & provided comments
+#  Tarun: created get.net function, plot function & provided comments
 
 #--------------------------------------------------------------------------------
 
@@ -32,32 +32,24 @@
 #  returns a list, where the ith element is a vector of the indices of the
 #  regular (non-household) contacts of person i
 
+#-------------------------------------------------------------------------------
+
 get.net <- function(beta, h, nc = 15) {
   bmu <- mean(beta)                   # mean sociability parameter
-  alink <- vector("list", n)          # creating an empty vector to store links
+  alink <- vector("list", n)          # initialise a vector to store links
   
-  # given the probability of a link between i and j
-  # nc * beta[i] * beta[j] / (bmu^2 * (n - 1))
+  for (i in 1:n) {
+    prob <- (nc*beta[i]*beta)/((bmu^2)*(n-1)) # the probability of a link between i and j
+    u <- runif(n)                     # random uniform deviates
 
-  constant <- nc / (bmu^2 * (n - 1))  # the constant term from probability
+    b <- which((u < prob) & (h != h[i]))
+    b <- b[b > i]
+    alink[[i]] <- c(alink[[i]], b) # Assign person i's regular contacts
+  }
   
-  # loop through each pair of people once
-  for (i in 1:(n - 1)) {
-    for (j in (i + 1):n) {
-
-      # skip if i and j are in the same household
-      if (h[i] != h[j]) {
-
-        # calulate the probability of a link
-        random_probability = beta[i]*beta[j]*constant
-
-        # draw a random number to decide if a link exists
-        if (runif(1) < random_probability) {
-
-          # record the link both ways
-          alink[[i]] <- c(alink[[i]], j)
-          alink[[j]] <- c(alink[[j]], i)
-        }
+  for(x in alink[[i]]) {    # Recording all contacts twice
+      if (x > i){
+        alink[[x]] <- c(alink[[x]], i)
       }
     }
   }
@@ -92,7 +84,9 @@ get.net <- function(beta, h, nc = 15) {
 #  nt : number of simulated days
 #  pinf : initial proportion of population starting as infected
 
-# returnsa list with elements S, E, I, R and t giving the total population in each state each day
+# returns a list with elements S, E, I, R and t giving the total population in each state each day
+
+#-------------------------------------------------------------------------------
 
 nseir <- function(beta, h, alink, alpha = c(.1, .01, .01), 
                   delta = .2, # daily probability of I moving to R
@@ -104,12 +98,12 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
   bmu <- mean(beta) # mean sociability parameter
 
   # States: 0 = S, 1 = E, 2 = I, 3 = R
-  # starting everyone in state S, except pinf*n people in I
-  x <- rep(0, n)
-  first_inf <- sample(1:n, round(pinf * n))
-  x[first_inf] <- 2 # pinf*n people in starting in state I
+  x <- rep(0, n)                            # starting everyone in state S
+  first_inf <- sample(1:n, round(pinf * n)) # randomly choose initial infected people
+  x[first_inf] <- 2                         # pinf*n people in starting in state I
   
-  S <- E <- I <- R <- rep(0, nt) # storage for population in each state
+  # storage for population in each state
+  S <- E <- I <- R <- rep(0, nt)
   
   # initialising the number of people in each state on day 1
   S[1] <- sum(x == 0)
@@ -117,25 +111,28 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
   I[1] <- sum(x == 2)
   R[1] <- sum(x == 3)
   
-  alpha_h <- alpha[1] # daily probability of person in state I infecting household member in state S
-  alpha_c <- alpha[2] # daily probability of person in state I infecting a person in their contact network
-  alpha_r <- alpha[3] # daily probability of person in state I infecting by random mixing
+  # daily transmission probabilities
+  alpha_h <- alpha[1] # household infection rate
+  alpha_c <- alpha[2] # social network infection rate
+  alpha_r <- alpha[3] # random mixing infection rate
   
+  # constant used in random mixing infection formula
   constant <- alpha_r * nc / (bmu^2 * (n - 1))
   
-  # looping over the days
+  # daily simulation loop
   for (t in 2:nt) {
-    state <- x
-    infected <- which(x == 2)
-    exposed <- which(x == 1)
 
-    # transitioning from I to R
+    state <- x                                    # copy current state
+    infected <- which(x == 2)                     # index of infectious people
+    exposed <- which(x == 1)                      # index of exposed people
+
+    # 1. infectious people transitioning to recovered
     if (length(infected) > 0) {
       recovered <- runif(length(infected)) < delta
       state[infected[recovered]] <- 3
     }
     
-    # transitioning from E to I
+    # 2. exposed people transitioning to infected
     if (length(exposed) > 0) {
       inf_next <- runif(length(exposed)) < gamma
       state[exposed[inf_next]] <- 2
@@ -143,48 +140,55 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
     
     infected <- which(x == 2)
     susceptible <- which(x == 0)
-    
+
+    # 3. susceptible people may become exposed
     if (length(infected) > 0 && length(susceptible) > 0) {
 
-      inf_risk <- rep(FALSE, n)
+      risk <- rep(FALSE, n)                     # vector to track who becomes exposed
 
+      # looping through every infected person
       for (i in infected) {
 
         # household transmission
+        # infected and susceptible people in the same household
         household <- which(h == h[i] & state == 0)
         if (length(household) > 0) {
           infections <- runif(length(household)) < alpha_h
-          inf_risk[household[infections]] <- TRUE
+          risk[household[infections]] <- TRUE
         }
 
         # regular contacts
-        contacts <- alink[[i]]
+        contacts <- alink[[i]]                           # list of i's social network
         if (length(contacts) > 0) {
-          S_contacts <- contacts[state[contacts] == 0]
+          S_contacts <- contacts[state[contacts] == 0]   # those who are susceptible
           if (length(S_contacts) > 0) {
             infections <- runif(length(S_contacts)) < alpha_c
-            inf_risk[S_contacts[infections]] <- TRUE
+            risk[S_contacts[infections]] <- TRUE
           }
         }
 
-        # random mixing
+        # random mixing using formula for the probability of a link
         if (length(susceptible) > 0) {
           random_prob <- constant * beta[i] * beta[susceptible]
           infections <- runif(length(susceptible)) < random_prob
-          inf_risk[susceptible[infections]] <- TRUE
+          risk[susceptible[infections]] <- TRUE
         }
-      }
-      state[inf_risk] <- 1
+      
+      # update states with those who are now exposed
+      state[risk] <- 1
     }
     
+    # update with new states
     x <- state
     
+    # record state counts for day t
     S[t] <- sum(x == 0)
     E[t] <- sum(x == 1)
     I[t] <- sum(x == 2)
     R[t] <- sum(x == 3)
   }
   
+  # return the daily totals
   list(S=S, E=E, I=I, R=R, t = 1:nt)
 }
 
