@@ -6,20 +6,9 @@
 # Simulating infection spread over time
 # Plotting and comparing scenarios
 
-library(ggplot2)
-library(tidyr)
-
-#-------------------------------------------------------------------------------
-
-## STEP 1: assigning people to households
-n <- 100
-hmax <- 5
-h <- sample(rep(1:n, sample(1:(n/hmax), n, replace = TRUE)))[1:n]
-
-
 #--------------------------------------------------------------------------------
 
-## STEP 2: Building the contact network model
+## Building the contact network model
 
 #  beta = vector of sociability
 #  h = household membership vector
@@ -54,15 +43,12 @@ get.net <- function(beta, h, nc = 15) {
 
 #-------------------------------------------------------------------------------
 
-## STEP 3:
-
 # each day E -> I with probability gamma
 # I -> R with probability delta
 # S -> E based on household infections (a_h), contact network infections (a_c) and random mixing (a_r)
 # delivers a function that returns counts of S,E,I,R over time
 
-nseir <- function(beta, h, alink,
-                  alpha = c(.1, .01, .01), 
+nseir <- function(beta, h, alink, alpha = c(.1, .01, .01), 
                   delta = .2, # daily probability of I moving to R
                   gamma = .4, # daily probability of E moving to I
                   nc = 15, # average number of contacts per person
@@ -112,14 +98,14 @@ nseir <- function(beta, h, alink,
     infected <- which(x == 2)
     susceptible <- which(x == 0)
     
-    if (length(inf) > 0 && length(susceptible) > 0) {
+    if (length(infected) > 0 && length(susceptible) > 0) {
 
       inf_risk <- rep(FALSE, n)
 
-      for (i in inf) {
+      for (i in infected) {
 
         # household transmission
-        household <- tabulate(h[i], nbins = max(h))
+        household <- which(h == h[i] & state == 1)
         if (length(household) > 0) {
           infections <- runif(length(household)) < alpha_h
           inf_risk[household[infections]] <- TRUE
@@ -136,10 +122,10 @@ nseir <- function(beta, h, alink,
         }
 
         # random mixing
-        if (length(sus) > 0) {
-          random_prob <- constant * beta[i] * beta[sus]
-          infections <- runif(length(sus)) < random_prob
-          inf_risk[sus[infections]] <- TRUE
+        if (length(susceptible) > 0) {
+          random_prob <- constant * beta[i] * beta[susceptible]
+          infections <- runif(length(susceptible)) < random_prob
+          inf_risk[susceptible[infections]] <- TRUE
         }
       }
       state[inf_risk] <- 1
@@ -156,20 +142,32 @@ nseir <- function(beta, h, alink,
   list(S=S, E=E, I=I, R=R, t = 1:nt)
 }
 
+#-------------------------------------------------------------------------------
 
 #### Plot the dynamics of our epidemics ####
 
-par(mfcol=c(2,2),mar=c(4,4,1,1)) ## set plot window up for multiple plots
-
 make_graph <- function(epi) {
-  plot(epi$S,ylim=c(0,max(epi$S)),xlab="day",ylab="N") ## S black
-  points(epi$E,col=4);points(epi$I,col=2) ## E (blue) and I (red)
-  
+  plot(epi$S, ylim=c(0,max(epi$S)), xlab="day", ylab="N")
+  lines(epi$S, col= "coral")
+  lines(epi$E, col= "darkblue")
+  lines(epi$I, col= "black")
+  lines(epi$R, col= "darkgreen")
 }
 
-##### Consider 4 Scenarios #####
 
-## Consider the following 4 models: 
+#-------------------------------------------------------------------------------
+
+n <- 10000
+hmax <- 5
+h <- sample(rep(1:n, sample(1:hmax, n, replace = TRUE)[1:n])
+beta <- runif(n)
+alink <- get.net(beta, h, nc = 15)
+res <- nseir(beta, h, alink, nt = 100)
+
+par(mfcol=c(2,2),mar=c(4,4,1,1)) ## set plot window up for multiple plots
+
+
+## Consider the following four scenarios: 
 ## First is our original model with household and regular
 ## contacts. Second is a model with only random mixing, 
 ## however alpha_r is increased to maintain a similar amount
@@ -178,23 +176,21 @@ make_graph <- function(epi) {
 ## time we make our beta vector constant by making every element
 ## equal to the mean of the previous beta.
 
-epi <- nseir(beta,h,alink, alpha = c(.1,.01,.01))
-make_graph(epi) ## Our model that considers social factors 
+
+scenario1 <- nseir(beta, h, alink, alpha = c(.1,.01,.01))
+make_graph(scenario1) ## Our model that considers social factors 
 title(main = "Social factors")
 
-epi <- nseir(beta,h,alink, alpha = c(0,0,0.4))
-make_graph(epi) ## Consider the model with no social factors
+scenario2 <- nseir(beta, h, alink, alpha = c(0,0,0.4))
+make_graph(scenario2) ## Consider the model with no social factors
 title(main = "Random mixing only")
 
-
-beta <- rep(mean(beta),n) ## Beta is the same for all n
-alink <- get.net(beta,h) ## Get our new regular contacts
-
-
-epi <- nseir(beta,h,alink, alpha = c(.1,.01,.01))
-make_graph(epi) ## Constant beta, social factors
+beta3 <- rep(mean(beta), n)
+alink3 <- get.net(beta3, h, nc = 15)
+scenario3 <- nseir(beta3, h, alink3, alpha = c(.1,.01,.01))
+make_graph(scenario3) ## Constant beta, social factors
 title(main = "Social factors, constant beta")
 
-epi <- nseir(beta,h,alink, alpha = c(0,0,0.04))
-make_graph(epi) ## Constant beta, no social factors
+scenario4 <- nseir(beta3, h, alink3, alpha = c(0,0,0.04))
+make_graph(scenario4) ## Constant beta, no social factors
 title(main = "Random mixing only, constant beta")
