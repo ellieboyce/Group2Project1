@@ -42,7 +42,7 @@ get.net <- function(beta, h, nc = 15) {
     prob <- (nc*beta[i]*beta)/((bmu^2)*(n-1)) # the probability of a link between i and j
     u <- runif(n)                     # random uniform deviates
 
-    b <- which((u < prob) & (h != h[i]))
+    b <- which((u < prob) & (h != h[i])) ## Avoid some household contacts
     b <- b[b > i]
     alink[[i]] <- c(alink[[i]], b) # Assign person i's regular contacts
   }
@@ -243,3 +243,8 @@ title(main = "Social factors, constant beta")
 
 make_graph(scenario4) ## Constant beta, no social factors
 title(main = "Random mixing only, constant beta")
+
+## Modelling with household and network structure seem to have the effect of infecting
+## fewer people in total, and prolonging the epidemic over a longer time period.
+## This is perhaps taking into account the fact that those who socialise less are
+## more likely to avoid the disease for longer and so prolong the epidemic.
