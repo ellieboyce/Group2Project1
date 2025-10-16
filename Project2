@@ -14,8 +14,8 @@
 #  A set of plots comparing different scenarios
 
 ## Contributions:
-#  Ellie: created h vector, get.net function, nseir function,
-#        provided comments, organised github file
+#  Ellie: created h vector, get.net function, nseir function, plot function,
+#        commented the project, organised github file
 #  Tarun: created get.net function, plot function & provided comments
 
 #--------------------------------------------------------------------------------
@@ -41,20 +41,20 @@ get.net <- function(beta, h, nc = 15) {
   for (i in 1:n) {
     prob <- (nc*beta[i]*beta)/((bmu^2)*(n-1)) # the probability of a link between i and j
     u <- runif(n)                     # random uniform deviates
-
+    
     b <- which((u < prob) & (h != h[i])) ## Avoid some household contacts
     b <- b[b > i]
     alink[[i]] <- c(alink[[i]], b) # Assign person i's regular contacts
-  
-  for(x in alink[[i]]) {    # Recording all contacts twice
+    
+    for(x in alink[[i]]) {    # Recording all contacts twice
       if (x > i){
         alink[[x]] <- c(alink[[x]], i)
       }
+    }
   }
-}
   return(alink)
 }
-  
+
 
 
 
@@ -96,7 +96,7 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
                   pinf = .005) {
   
   bmu <- mean(beta) # mean sociability parameter
-
+  
   # States: 0 = S, 1 = E, 2 = I, 3 = R
   x <- rep(0, n)                            # starting everyone in state S
   first_inf <- sample(1:n, round(pinf * n)) # randomly choose initial infected people
@@ -121,11 +121,11 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
   
   # daily simulation loop
   for (t in 2:nt) {
-
+    
     state <- x                                    # copy current state
     infected <- which(x == 2)                     # index of infectious people
     exposed <- which(x == 1)                      # index of exposed people
-
+    
     # 1. infectious people transitioning to recovered
     if (length(infected) > 0) {
       recovered <- runif(length(infected)) < delta
@@ -140,15 +140,15 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
     
     infected <- which(x == 2)
     susceptible <- which(x == 0)
-
+    
     # 3. susceptible people may become exposed
     if (length(infected) > 0 && length(susceptible) > 0) {
-
+      
       risk <- rep(FALSE, n)                     # vector to track who becomes exposed
-
+      
       # looping through every infected person
       for (i in infected) {
-
+        
         # household transmission
         # infected and susceptible people in the same household
         household <- which(h == h[i] & state == 0)
@@ -156,7 +156,7 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
           infections <- runif(length(household)) < alpha_h
           risk[household[infections]] <- TRUE
         }
-
+        
         # regular contacts
         contacts <- alink[[i]]                           # list of i's social network
         if (length(contacts) > 0) {
@@ -166,58 +166,76 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
             risk[S_contacts[infections]] <- TRUE
           }
         }
-
+        
         # random mixing using formula for the probability of a link
         if (length(susceptible) > 0) {
           random_prob <- constant * beta[i] * beta[susceptible]
           infections <- runif(length(susceptible)) < random_prob
           risk[susceptible[infections]] <- TRUE
         }
+        
+        # update states with those who are now exposed
+        state[risk] <- 1
+      }
+    }
       
-      # update states with those who are now exposed
-      state[risk] <- 1
+      # update with new states
+      x <- state
+      
+      # record state counts for day t
+      S[t] <- sum(x == 0)
+      E[t] <- sum(x == 1)
+      I[t] <- sum(x == 2)
+      R[t] <- sum(x == 3)
     }
     
-    # update with new states
-    x <- state
-    
-    # record state counts for day t
-    S[t] <- sum(x == 0)
-    E[t] <- sum(x == 1)
-    I[t] <- sum(x == 2)
-    R[t] <- sum(x == 3)
-  }
+    # return the daily totals
+    list(S=S, E=E, I=I, R=R, t = 1:nt)
+}
+
+#-------------------------------------------------------------------------------
+
+### FUNCTION: make_graph
+
+#  Plot the dynamics of our epidemics over time
+#  epi : list returned by nseir()
+
+make_graph <- function(epi, normalize = FALSE) {
+
+  plot(epi$t, epi$S, type = "n",
+       ylim = c(0, max(epi$S)),
+       xlab = "Days since start of simulation",
+       ylab = "Number of people",
+       cex.lab = 1.2,
+       cex.axis = 1.1,
+       cex.main = 1.2)
   
-  # return the daily totals
-  list(S=S, E=E, I=I, R=R, t = 1:nt)
+  grid(col = "lightgray", lty = "dotted")
+  
+  lines(epi$t, epi$S, col = "slateblue", lwd = 2)
+  lines(epi$t, epi$E, col = "turquoise3", lwd = 2)
+  lines(epi$t, epi$I, col = "red2", lwd = 2)
+  lines(epi$t, epi$R, col = "dodgerblue", lwd = 2)
+  
 }
 
-#-------------------------------------------------------------------------------
-
-#### Plot the dynamics of our epidemics ####
-
-make_graph <- function(epi) {
-  plot(epi$t, epi$S, type = "n", ylim=c(0,max(epi$S)), xlab="Days", ylab="People")
-  lines(epi$S, col= "purple")
-  lines(epi$E, col= "deeppink")
-  lines(epi$I, col= "black")
-  lines(epi$R, col= "dodgerblue")
-}
 
 
 #-------------------------------------------------------------------------------
 
-n <- 10000
-hmax <- 5
+### Applying our functions to create plots
+
+n <- 10000     # population size
+hmax <- 5      # maximum household size
+
+# household vector, which identifies which household a person belongs to
 h <- sample(rep(1:n, sample(1:hmax, n, replace = TRUE))[1:n])
+
+# assign each person to a sociability value between 0 and 1
 beta <- runif(n)
-beta3 <- rep(mean(beta), n)
+
+# building the social network model
 alink <- get.net(beta, h, nc = 15)
-alink3 <- get.net(beta3, h, nc = 15)
-scenario1 <- nseir(beta, h, alink, alpha = c(.1,.01,.01))
-scenario2 <- nseir(beta, h, alink, alpha = c(0,0,0.4))
-scenario3 <- nseir(beta3, h, alink3, alpha = c(.1,.01,.01))
-scenario4 <- nseir(beta3, h, alink3, alpha = c(0,0,0.04))
 
 par(mfcol = c(2,2), mar = c(4,4,1,1)) ## set plot window up for multiple plots
 
@@ -232,19 +250,46 @@ par(mfcol = c(2,2), mar = c(4,4,1,1)) ## set plot window up for multiple plots
 ## equal to the mean of the previous beta.
 
 
+# Scenario 1 : Full model
+scenario1 <- nseir(beta, h, alink, alpha = c(.1,.01,.01))
 make_graph(scenario1) ## Our model that considers social factors 
 title(main = "Social factors")
 
+
+# Scenario 2 : Random mixing only
+#      alpha_h = alpha_c = 0, alpha_r = 0.4
+scenario2 <- nseir(beta, h, alink, alpha = c(0,0,0.4))
 make_graph(scenario2) ## Consider the model with no social factors
 title(main = "Random mixing only")
+legend("right",
+       legend = c("Susceptible (S)", "Exposed (E)", "Infectious (I)", "Recovered (R)"),
+       col = c("slateblue", "turquoise3", "red2", "dodgerblue"),
+       lwd = 2, bty = "n", cex = 0.9)
 
+
+# Scenario 3 : Constant beta with household and network structure
+beta_c <- rep(mean(beta), n)           # constant beta
+alink_c <- get.net(beta_c, h, nc = 15) # social network model with constant beta
+scenario3 <- nseir(beta_c, h, alink_c, alpha = c(.1,.01,.01))
 make_graph(scenario3) ## Constant beta, social factors
 title(main = "Social factors, constant beta")
 
+
+# Scenario 4 : Constant beta and random mixing only
+scenario4 <- nseir(beta_c, h, alink_c, alpha = c(0,0,0.04))
 make_graph(scenario4) ## Constant beta, no social factors
 title(main = "Random mixing only, constant beta")
+
+
+
+#-------------------------------------------------------------------------------
+
+### Comment on the effect of the household and network structure, relative to random mixing:
 
 ## Modelling with household and network structure seem to have the effect of infecting
 ## fewer people in total, and prolonging the epidemic over a longer time period.
 ## This is perhaps taking into account the fact that those who socialise less are
 ## more likely to avoid the disease for longer and so prolong the epidemic.
+
+#-------------------------------------------------------------------------------
+ 
