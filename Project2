@@ -136,3 +136,46 @@ nseir <- function(beta, h, alink,
   
   list(S=S, E=E, I=I, R=R, t = 1:nt)
 }
+
+
+#### Plot the dynamics of our epidemics ####
+
+par(mfcol=c(2,2),mar=c(4,4,1,1)) ## set plot window up for multiple plots
+
+make_graph <- function(epi) {
+  plot(epi$S,ylim=c(0,max(epi$S)),xlab="day",ylab="N") ## S black
+  points(epi$E,col=4);points(epi$I,col=2) ## E (blue) and I (red)
+  
+}
+
+##### Consider 4 Scenarios #####
+
+## Consider the following 4 models: 
+## First is our original model with household and regular
+## contacts. Second is a model with only random mixing, 
+## however alpha_r is increased to maintain a similar amount
+## of total interactions as scenario 1.
+## Scenario 3 and 4 are repeats of the first two however this
+## time we make our beta vector constant by making every element
+## equal to the mean of the previous beta.
+
+epi <- nseir(beta,h,alink, alpha = c(.1,.01,.01))
+make_graph(epi) ## Our model that considers social factors 
+title(main = "Social factors")
+
+epi <- nseir(beta,h,alink, alpha = c(0,0,0.4))
+make_graph(epi) ## Consider the model with no social factors
+title(main = "Random mixing only")
+
+
+beta <- rep(mean(beta),n) ## Beta is the same for all n
+alink <- get.net(beta,h) ## Get our new regular contacts
+
+
+epi <- nseir(beta,h,alink, alpha = c(.1,.01,.01))
+make_graph(epi) ## Constant beta, social factors
+title(main = "Social factors, constant beta")
+
+epi <- nseir(beta,h,alink, alpha = c(0,0,0.04))
+make_graph(epi) ## Constant beta, no social factors
+title(main = "Random mixing only, constant beta")
