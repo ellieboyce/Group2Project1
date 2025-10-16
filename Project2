@@ -1,32 +1,60 @@
-### Group 2 Project 2
+#--------------------------------------------------------------------------------
+### GROUP 2 PROJECT 2
 
-# Simulating how diseases spread when people live in households and have social networks
+### SOCIAL STRUCTURE IN SEIR MODELS
 
-# Building data structures (networks and households)
-# Simulating infection spread over time
-# Plotting and comparing scenarios
+## Goal:
+#  Simulate how an infectious disease spread where people live in households
+#  and have social contact networks
 
-# Ellie: created h vector, get.net function, n.seir function, provided comments, organised github file
-# Tarun: created plot function & provided comments
+## This model builds:
+#  A household structure
+#  A contact network
+#  A daily SEIR simulation - Susceptible–Exposed–Infectious–Recovered
+#  A set of plots comparing different scenarios
+
+## Contributions:
+#  Ellie: created h vector, get.net function, n_seir function,
+#        provided comments, organised github file
+#  Tarun: created plot function & provided comments
 
 #--------------------------------------------------------------------------------
 
-## Building the contact network model
+### FUNCTION: get.net
 
-#  beta = vector of sociability
-#  h = household membership vector
-#  nc = average number of contacts per person
+#  Creating a social contact network between people, based on their
+#  sociability and their household.
+
+#   beta : vector of sociability
+#   h : household ID vector
+#   nc : average number of contacts per person
+
+#  returns a list, where the ith element is a vector of the indices of the
+#  regular (non-household) contacts of person i
 
 get.net <- function(beta, h, nc = 15) {
-  bmu <- mean(beta) # mean sociability parameter
-  alink <- vector("list", n) # creating an empty vector to star
-  constant <- nc / (bmu^2 * (n - 1))
+  bmu <- mean(beta)                   # mean sociability parameter
+  alink <- vector("list", n)          # creating an empty vector to store links
   
+  # given the probability of a link between i and j
+  # nc * beta[i] * beta[j] / (bmu^2 * (n - 1))
+
+  constant <- nc / (bmu^2 * (n - 1))  # the constant term from probability
+  
+  # loop through each pair of people once
   for (i in 1:(n - 1)) {
     for (j in (i + 1):n) {
+
+      # skip if i and j are in the same household
       if (h[i] != h[j]) {
+
+        # calulate the probability of a link
         random_probability = beta[i]*beta[j]*constant
+
+        # draw a random number to decide if a link exists
         if (runif(1) < random_probability) {
+
+          # record the link both ways
           alink[[i]] <- c(alink[[i]], j)
           alink[[j]] <- c(alink[[j]], i)
         }
@@ -37,19 +65,34 @@ get.net <- function(beta, h, nc = 15) {
   return(alink)
 }
 
-# each person has a sociability value beta_i (higher => more connections)
-# people in the same household cannot be linked in the network
-# probability of a link
-# (nc*beta_i*beta_j)/(beta^2*(n-1))
-# links are undirected => if i-j exists, so does j-i
-# alink[[i]] gives all indices of i's contacts
 
 #-------------------------------------------------------------------------------
 
-# each day E -> I with probability gamma
-# I -> R with probability delta
-# S -> E based on household infections (a_h), contact network infections (a_c) and random mixing (a_r)
-# delivers a function that returns counts of S,E,I,R over time
+### FUNCTION: nseir
+
+#  Creating a SEIR epidemic simulation
+
+#  Each day, people may change states:
+#        E -> I : exposed becomes infectious
+#        I -> R : infectious recovers
+#        S -> E : become exposed after contact with an infectious person
+
+#  Transmission can occur throughL
+#        household contact
+#        social network contact
+#        random mixing
+
+#  beta : vector of sociability
+#  h : household ID vector
+#  alink : contacts returned by get.net()
+#  alpha : infection probabilities for household, contact, random mixing
+#  delta : probability of infected recovering
+#  gamma : probability of exposed becoming infected
+#  nc : average number of contacts
+#  nt : number of simulated days
+#  pinf : initial proportion of population starting as infected
+
+# returnsa list with elements S, E, I, R and t giving the total population in each state each day
 
 nseir <- function(beta, h, alink, alpha = c(.1, .01, .01), 
                   delta = .2, # daily probability of I moving to R
@@ -108,7 +151,7 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
       for (i in infected) {
 
         # household transmission
-        household <- which(h == h[i] & state == 1)
+        household <- which(h == h[i] & state == 0)
         if (length(household) > 0) {
           infections <- runif(length(household)) < alpha_h
           inf_risk[household[infections]] <- TRUE
@@ -162,7 +205,7 @@ make_graph <- function(epi) {
 
 n <- 10000
 hmax <- 5
-h <- sample(rep(1:n, sample(1:hmax, n, replace = TRUE)[1:n])
+h <- sample(rep(1:n, sample(1:hmax, n, replace = TRUE))[1:n])
 beta <- runif(n)
 beta3 <- rep(mean(beta), n)
 alink <- get.net(beta, h, nc = 15)
