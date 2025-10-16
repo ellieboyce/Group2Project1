@@ -74,7 +74,8 @@ nseir <- function(beta, h, alink,
   # States: 0 = S, 1 = E, 2 = I, 3 = R
   # starting everyone in state S, except pinf*n people in I
   x <- rep(0, n)
-  x[sample(1:n, round(pinf * n))] <- 2 # pinf*n people in starting in state I
+  first_inf <- sample(1:n, round(pinf * n))
+  x[first_inf] <- 2 # pinf*n people in starting in state I
   
   S <- E <- I <- R <- rep(0, nt) # storage for population in each state
   
@@ -88,44 +89,64 @@ nseir <- function(beta, h, alink,
   alpha_c <- alpha[2] # daily probability of person in state I infecting a person in their contact network
   alpha_r <- alpha[3] # daily probability of person in state I infecting by random mixing
   
+  constant <- alpha_r * nc / (bmu^2 * (n - 1))
+  
   # looping over the days
   for (t in 2:nt) {
-    u <- runif(n)
-    
-    x[x == 1 & u < gamma] <- 2 # each day E -> I with probability gamma
-    x[x == 2 & u < delta] <- 3 # each day I -> R with probability delta
-    
-    # infection risk
-    risk <- rep(0, n) # empty vector
-    inf <- which(x == 2) # people in state I
-    
-    if (length(inf) > 0) {
-      
+    state <- x
+    infected <- which(x == 2)
+    exposed <- which(x == 1)
 
-      ####### need to fix these loops!
-
-      # household transmission
-      for (i in inf) {
-        household <- which((h == h[i]) & (x == 0))
-        if (length(household) > 0) {
-          risk[household] <- 1 - (1 - risk[household]) * (1 - alpha_h)
-        }
-      }
-      
-      # regular contacts
-      for (i in inf) {
-        contacts <- alink[[i]]
-        if (length(contacts) == 0) next
-        contacts <- contacts[x[contacts] == 0]
-        if (length(contacts) > 0) {
-          risk[contacts] <- 1 - (1 - risk[contacts]) * (1 - alpha_c)
-        }
-      }
+    # transitioning from I to R
+    if (length(infected) > 0) {
+      recovered <- runif(length(infected)) < delta
+      state[infected[recovered]] <- 3
     }
     
-    x[x == 0 & (runif(n) < risk)] <- 1 # S -> E
+    # transitioning from E to I
+    if (length(exposed) > 0) {
+      inf_next <- runif(length(exposed)) < gamma
+      state[exposed[inf_next]] <- 2
+    }
     
-    # recording the totals in each state
+    infected <- which(x == 2)
+    susceptible <- which(x == 0)
+    
+    if (length(inf) > 0 && length(susceptible) > 0) {
+
+      inf_risk <- rep(FALSE, n)
+
+      for (i in inf) {
+
+        # household transmission
+        household <- tabulate(h[i], nbins = max(h))
+        if (length(household) > 0) {
+          infections <- runif(length(household)) < alpha_h
+          inf_risk[household[infections]] <- TRUE
+        }
+
+        # regular contacts
+        contacts <- alink[[i]]
+        if (length(contacts) > 0) {
+          S_contacts <- contacts[state[contacts] == 0]
+          if (length(S_contacts) > 0) {
+            infections <- runif(length(S_contacts)) < alpha_c
+            inf_risk[S_contacts[infections]] <- TRUE
+          }
+        }
+
+        # random mixing
+        if (length(sus) > 0) {
+          random_prob <- constant * beta[i] * beta[sus]
+          infections <- runif(length(sus)) < random_prob
+          inf_risk[sus[infections]] <- TRUE
+        }
+      }
+      state[inf_risk] <- 1
+    }
+    
+    x <- state
+    
     S[t] <- sum(x == 0)
     E[t] <- sum(x == 1)
     I[t] <- sum(x == 2)
