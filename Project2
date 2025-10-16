@@ -45,15 +45,15 @@ get.net <- function(beta, h, nc = 15) {
     b <- which((u < prob) & (h != h[i])) ## Avoid some household contacts
     b <- b[b > i]
     alink[[i]] <- c(alink[[i]], b) # Assign person i's regular contacts
-  }
   
   for(x in alink[[i]]) {    # Recording all contacts twice
       if (x > i){
         alink[[x]] <- c(alink[[x]], i)
       }
-    }
-  return(alink)
   }
+}
+  return(alink)
+}
   
 
 
