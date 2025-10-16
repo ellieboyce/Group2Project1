@@ -23,8 +23,8 @@ h <- sample(h[1:n])
 
 
 # h
-# tabulate(h) # How many people are in each house
-# tabulate(tabulate(h)) # How many of each size house there is
+#tabulate(h) # How many people are in each house
+#tabulate(tabulate(h)) # How many of each size house there is
 
 
 
@@ -43,7 +43,7 @@ get.net <- function(beta,h,nc=15){
   for(i in 1:n) {
     prob <- (nc*beta[i]*beta)/((bmean^2)*(n-1)) ## Find all probabilities for person i using formula
     u <- runif(n) ## random uniform deviates
-
+    
     b <- which((u<prob)&(h!=h[i]))
     b <- b[b>i]
     alink[[i]] <- c(alink[[i]],b) ## Assign person i's regular contacts
@@ -51,11 +51,11 @@ get.net <- function(beta,h,nc=15){
     
     for(x in alink[[i]]) {  ## Recording all contacts twice
       if (x>i){
-      alink[[x]] <- c(alink[[x]],i)
+        alink[[x]] <- c(alink[[x]],i)
       }
     }
   }
-
+  
   return(alink)
 }
 
@@ -78,26 +78,25 @@ nseir <- function(beta,h,alink,alpha=c(.1,.01,.01),delta=.2,gamma=.4,nc=15, nt =
     u <- runif(n) ## uniform random deviates
     
     
-    infect <- x[x==2]
+    infect <- which(x==2)
     x[x==2&u<delta] <- 3 ## I -> R with prob delta
     x[x==1&u<gamma] <- 2 ## E -> I with prob gamma
-    if( length(infect) > 0) {
+    if(length(infect) > 0) {
       
-    for (j in infect) { ## S -> E
-      e <- which(h==h[j] & x==0)
-      u <- runif(length(e))
-      x[e][u<alpha[1]] <- 1 ## Household Contacts
-      
-      m <- alink[[j]]
-      mt <- m[x[m]==0]
-      u <- runif(length(mt))
-      x[mt][u<alpha[2]] <- 1 ## Regular Contacts
-
-      
-      u <- runif(n)
-      prob <- (alpha[3]*nc*beta[j]*beta)/((bmean^2)*(n-1)) 
-      x[x==0&u<prob] <- 1 ## Random Mixing
-    }
+      for (j in infect) { ## S -> E
+        e <- which(h==h[j] & x==0)
+        u <- runif(length(e))
+        x[e][u<alpha[1]] <- 1 ## Household Contacts
+        
+        m <- alink[[j]]
+        mt <- m[x[m]==0]
+        u <- runif(length(mt))
+        x[mt][u<alpha[2]] <- 1 ## Regular Contacts
+        
+        u <- runif(n)
+        prob <- (alpha[3]*nc*beta[j]*beta)/((bmean^2)*(n-1)) 
+        x[x==0&u<prob] <- 1 ## Random Mixing
+      }
     }
     S[i] <- sum(x==0); E[i] <- sum(x==1)
     I[i] <- sum(x==2); R[i] <- sum(x==3)
@@ -105,43 +104,39 @@ nseir <- function(beta,h,alink,alpha=c(.1,.01,.01),delta=.2,gamma=.4,nc=15, nt =
   list(S=S,E=E,I=I,R=R)
 } ## nseir
 
-nseir(beta,h,alink)
 
-
-## Check how long code takes to run
-end.time <- Sys.time()
-time_taken <- end.time - start.time
-time_taken
-
-
-#### (4) Plot function ####
+#### Plot the dynamics of our epidemics ####
 
 
 par(mfcol=c(2,2),mar=c(4,4,1,1)) ## set plot window up for multiple plots
 
 make_graph <- function(epi) {
-    plot(epi$S,ylim=c(0,max(epi$S)),xlab="day",ylab="N") ## S black
-    points(epi$E,col=4);points(epi$I,col=2) ## E (blue) and I (red
+  plot(epi$S,ylim=c(0,max(epi$S)),xlab="day",ylab="N") ## S black
+  points(epi$E,col=4);points(epi$I,col=2) ## E (blue) and I (red)
 }
 
-##### (5) 4 Scenarios #####
+##### Consider 4 Scenarios #####
 
 epi <- nseir(beta,h,alink, alpha = c(.1,.01,.01))
-make_graph(epi) ## Social factors 
-title(main = "1")
+make_graph(epi) ## Our model that considers social factors 
+title(main = "Social factors")
 
 epi <- nseir(beta,h,alink, alpha = c(0,0,0.4))
-make_graph(epi) ## No social factors
-title(main = "2")
+make_graph(epi) ## Consider the model with no social factors
+title(main = "Random mixing only")
 
-beta <- rep(mean(beta),n)
+
+beta <- rep(mean(beta),n) ## Beta is the same for all n
+alink <- get.net(beta,h) ## Get our new regular contacts
+
+
 epi <- nseir(beta,h,alink, alpha = c(.1,.01,.01))
 make_graph(epi) ## Constant beta, social factors
-title(main = "3")
+title(main = "Social factors, constant beta")
 
 epi <- nseir(beta,h,alink, alpha = c(0,0,0.04))
 make_graph(epi) ## Constant beta, no social factors
-title(main = "4")
+title(main = "Random mixing only, constant beta")
 
 
 ## Check how long code takes to run
