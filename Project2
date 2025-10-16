@@ -26,24 +26,22 @@ h <- sample(rep(1:n, sample(1:(n/hmax), n, replace = TRUE)))[1:n]
 #  nc = average number of contacts per person
 
 get.net <- function(beta, h, nc = 15) {
-  n <- 100
-  bmu <- mean(beta) # mean sociabilty parameter
-  alink <- vector("list", n) # creating an empty vector to start
+  bmu <- mean(beta) # mean sociability parameter
+  alink <- vector("list", n) # creating an empty vector to star
+  constant <- nc / (bmu^2 * (n - 1))
   
-  for (i in 1:(n-1)) {
-    for (j in (i+1):n) {
-      
-      if (is.na(h[i]) || is.na(h[j])) next
-      if (h[i] == h[j]) next
-      
-      p_ij <- (nc * beta[i] * beta[j]) / (bmu^2 * (n - 1))
-      
-      if (runif(1) < p_ij) {
-        alink[[i]] <- c(alink[[i]], j)
-        alink[[j]] <- c(alink[[j]], i)
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      if (h[i] != h[j]) {
+        random_probability = beta[i]*beta[j]*constant
+        if (runif(1) < random_probability) {
+          alink[[i]] <- c(alink[[i]], j)
+          alink[[j]] <- c(alink[[j]], i)
+        }
       }
     }
   }
+  
   return(alink)
 }
 
