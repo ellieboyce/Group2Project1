@@ -181,19 +181,19 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
         state[risk] <- 1
       }
     }
-      
-      # update with new states
-      x <- state
-      
-      # record state counts for day t
-      S[t] <- sum(x == 0)
-      E[t] <- sum(x == 1)
-      I[t] <- sum(x == 2)
-      R[t] <- sum(x == 3)
-    }
     
-    # return the daily totals
-    list(S=S, E=E, I=I, R=R, t = 1:nt)
+    # update with new states
+    x <- state
+    
+    # record state counts for day t
+    S[t] <- sum(x == 0)
+    E[t] <- sum(x == 1)
+    I[t] <- sum(x == 2)
+    R[t] <- sum(x == 3)
+  }
+  
+  # return the daily totals
+  list(S=S, E=E, I=I, R=R, t = 1:nt)
 }
 
 #-------------------------------------------------------------------------------
@@ -204,7 +204,7 @@ nseir <- function(beta, h, alink, alpha = c(.1, .01, .01),
 #  epi : list returned by nseir()
 
 make_graph <- function(epi, normalize = FALSE) {
-
+  
   plot(epi$t, epi$S, type = "n",
        ylim = c(0, max(epi$S)),
        xlab = "Days since start of simulation",
@@ -232,8 +232,9 @@ n <- 10000     # population size
 hmax <- 5      # maximum household size
 
 # household vector, which identifies which household a person belongs to
-h <- sample(rep(1:n, sample(1:hmax, n, replace = TRUE))[1:n])
+h <- sample(rep(1:n, sample(1:hmax, n, replace = TRUE)))[1:n]
 
+length(h)
 # assign each person to a sociability value between 0 and 1
 beta <- runif(n)
 
@@ -295,4 +296,3 @@ title(main = "Random mixing only, constant beta")
 ## more likely to avoid the disease for longer and so prolong the epidemic.
 
 #-------------------------------------------------------------------------------
- 
