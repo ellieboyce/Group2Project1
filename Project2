@@ -13,6 +13,9 @@
 #  A daily SEIR simulation - Susceptible–Exposed–Infectious–Recovered
 #  A set of plots comparing different scenarios
 
+## GitHub Repository Link:
+# https://github.com/ellieboyce/Group2Project1.git
+
 ## Contributions:
 #  Ellie: created h vector, get.net function, nseir function, plot function,
 #        commented the project, organised github file
